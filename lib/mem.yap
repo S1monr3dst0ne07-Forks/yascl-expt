@@ -1,5 +1,7 @@
 
 
+use "lib/bool.yap"
+
 seq Mem 
 {
     // null pointer contant.
@@ -104,3 +106,35 @@ lab missing; return default;
 lab found;   return offset;
 }
 
+
+
+// When reading left to right. MSB is 0.
+fn Mem::GetBitLeft(num, bit)
+{
+    return (num >> (63 - bit)) & 1;
+}
+
+// When reading right to left. MSB is last. This is the native x86 order.
+fn Mem::GetBitRight(num, bit)
+{
+    return (num >> bit) & 1;
+}
+
+
+
+fn Mem::Cmp(a, b, count)
+{
+    put i = 0;
+    lab loop;
+        jump success ~ i     == count;
+
+        jump fail    ~ (a.i) != (b.i);
+
+        put i = i + 1;
+    jump loop;
+
+    lab success;
+        return Bool::TRUE;
+    lab fail;
+        return Bool::FALSE;
+}

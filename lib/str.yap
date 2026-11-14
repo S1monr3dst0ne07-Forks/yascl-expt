@@ -8,9 +8,31 @@ fn Str::Len(str)
 {
     put len = 0;
     lab loop;
+        jump done ~ (str.len) == 0;
+
         put len = len + 1;
-    jump loop ~ str.len;
+
+        jump loop;
+    lab done;
     return len;
+}
+
+fn Str::Cmp(a, b)
+{
+    lab loop;
+        jump unequal ~ (a.0) != (b.0);
+
+        jump equal   ~ (a.0) == 0;
+
+        put a = a + 1;
+        put b = b + 1;
+    jump loop;
+
+    lab equal;
+    return Bool::TRUE;
+
+    lab unequal;
+    return Bool::FALSE;
 }
 
 fn Str::Copy(str)

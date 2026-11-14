@@ -14,14 +14,15 @@ fn FS::ConvertPath(qpath)
 }
 
 
-fn FS::Sys::Open(path, mode)
+fn FS::Sys::Open(path, flags, mode)
 {
     return Sys::TryCall(
         "FS::Sys::Open",
-        SYSCALL::OPEN, 
+        SYSCALL::OPENAT,
+        0 - 100,
         FS::ConvertPath(path),
-        mode,
-        0  // irrelevent for open
+        flags,
+        mode
     );
 }
 
@@ -104,10 +105,13 @@ fn FS::Write(path, qfile)
     put fd = FS::Sys::Open(path, 
         FS::Mode::WRONLY |
         FS::Mode::CREATE |
-        FS::Mode::TRUNC
+        FS::Mode::TRUNC,
+        (FS::Permissions::READ_WRITE << 0) |
+        (FS::Permissions::READ_WRITE << 3) |
+        (FS::Permissions::READ_WRITE << 6)
     );
 
-    put size = Str::Len(qfile);
+    put size  = Str::Len(qfile);
     put bfile = Chunk::New(size);
 
     Mem::ToBytes(bfile, qfile, size);
@@ -140,7 +144,7 @@ seq FS::Dir::Config
     BUFFER_SIZE = 40000,
 }
 
-fn FS::Dir::ParseDirEnt(buffer, listing)
+fn FS::Dir::ParseDirEnt(buffer, listing, only_real_entries)
 {
     put rec_len_ptr = buffer + FS::Struct::Dirent::RECLEN;
     put record_length = (rec_len_ptr.0) & ((1 << 16) - 1);
@@ -160,15 +164,20 @@ fn FS::Dir::ParseDirEnt(buffer, listing)
     put type_offset = record_length - 1;
     put type = ((buffer + type_offset).0) & 255;
 
+    jump skip_check ~ Bool::Not(only_real_entries & (type == FS::Dir::Type::DIR));
+    jump skip ~ (Str::Cmp(name, ".")) | (Str::Cmp(name, ".."));
+
+    lab skip_check;
     put entry = Chunk::New(FS::Dir::Ent);
     put entry.FS::Dir::Ent::NAME = name;
     put entry.FS::Dir::Ent::TYPE = type;
     Dyn::Push(listing, entry);
 
+    lab skip;
     return record_length;
 }
 
-fn FS::Dir(path)
+fn FS::Dir(path, only_real_entries)
     // gives back Dyn<FS::Dir::Ent>
 {
     jump not_a_dir ~ Bool::Not(FS::IsDir(path));
@@ -197,7 +206,8 @@ fn FS::Dir(path)
         jump done ~ offset == buffer_capacity;
         put offset = offset + FS::Dir::ParseDirEnt(
             buffer + offset, 
-            listing
+            listing,
+            only_real_entries
         );
 
         jump loop;

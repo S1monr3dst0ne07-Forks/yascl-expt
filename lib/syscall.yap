@@ -41,6 +41,8 @@ seq SYSCALL
 
     CLOCK_GETTIME   = 228,
     CLOCK_NANOSLEEP = 230,
+
+    OPENAT = 257,
 }
 
 

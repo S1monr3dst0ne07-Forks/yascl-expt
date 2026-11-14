@@ -3,7 +3,12 @@ use "lib/dyn.yap"
 
 fn AStr::Create()
 {
-	return Dyn::Create();
+	put dyn = Dyn::Create();
+
+	// Initialize the first character as \0.
+	put Dyn::Ptr(dyn).0 = 0;
+
+	return dyn;
 }
 
 fn AStr::AppendBuffer(self, buf, len)
