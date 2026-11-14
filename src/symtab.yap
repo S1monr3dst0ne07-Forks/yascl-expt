@@ -95,7 +95,7 @@ fn Symtab::GenSymTab(ctx, stuff)
 		put offset = HT::Get(map, symbol);
 
 		IR::Push32(ctx, offset); // st_name
-		IR::Push8 (ctx, 0     ); // st_info  = STT_NOTYPE | STB_LOCAL
+		IR::Push8 (ctx, 16    ); // st_info  = STT_NOTYPE | STB_GLOBAL
 		IR::Push8 (ctx, 0     ); // st_other = STV_DEFAULT
 		IR::Push16(ctx, 65521 ); // st_shndx = SHN_ABS
 		IR::Push64(ctx, addr  ); // st_value
@@ -152,8 +152,8 @@ fn Symtab::GenSectHdrs(ctx, stuff)
 	IR::Push32(ctx, 2             ); // sh_type      = SHT_SYMTAB
 	IR::Push64(ctx, 0             ); // sh_flags     = 0
 	IR::Push64(ctx, 0             ); // sh_addr      = 0 (don't load)
-	IR::Push64(ctx, str_tab_offset); // sh_offset
-	IR::Push64(ctx, str_tab_size  ); // sh_size
+	IR::Push64(ctx, sym_tab_offset); // sh_offset
+	IR::Push64(ctx, sym_tab_size  ); // sh_size
 	IR::Push32(ctx, 1             ); // sh_link      = 1
 	IR::Push32(ctx, 1             ); // sh_info      = 1
 	IR::Push64(ctx, 0             ); // sh_addralign = 0
@@ -184,9 +184,5 @@ fn Symtab::Gen(ctx)
 	Symtab::PatchMainTable(ctx, stuff);
 	
 }
-
-
-
-
 
 
