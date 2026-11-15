@@ -380,9 +380,19 @@ lab asm_store_local;
     jump loop;
 
 lab asm_enter;
-    IR::Push8(ctx, 200); // 0xC8 -> enter
-    IR::Push16(ctx, arg); // low byte
-    IR::Push8(ctx, 0);   // zero-nested
+    //IR::Push8(ctx, 200); // 0xC8 -> enter
+    //IR::Push16(ctx, arg); // low byte
+    //IR::Push8(ctx, 0);   // zero-nested
+
+	IR::Push8(ctx, 85);
+	IR::PushREXW(ctx);
+	IR::Push8(ctx, 137);
+	IR::Push8(ctx, 229);
+	IR::PushREXW(ctx);
+	IR::Push8(ctx, 129);
+	IR::Push8(ctx, 236);
+	IR::Push32(ctx, arg);
+
     jump loop;
 
 lab asm_leave;
