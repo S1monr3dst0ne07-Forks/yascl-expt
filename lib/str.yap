@@ -24,8 +24,8 @@ fn Str::Cmp(a, b)
 
         jump equal   ~ (a.0) == 0;
 
-        put a = a + 1;
-        put b = b + 1;
+        put a = a : 1;
+        put b = b : 1;
     jump loop;
 
     lab equal;

@@ -18,8 +18,7 @@ fn FS::Sys::Open(path, flags, mode)
 {
     return Sys::TryCall(
         "FS::Sys::Open",
-        SYSCALL::OPENAT,
-        0 - 100,
+        SYSCALL::OPEN,
         FS::ConvertPath(path),
         flags,
         mode
@@ -177,7 +176,12 @@ fn FS::Dir::ParseDirEnt(buffer, listing, only_real_entries)
     return record_length;
 }
 
-fn FS::Dir(path, only_real_entries)
+fn FS::Dir(path)
+{
+    return FS::Dir2(path, Bool::FALSE);
+}
+
+fn FS::Dir2(path, only_real_entries)
     // gives back Dyn<FS::Dir::Ent>
 {
     jump not_a_dir ~ Bool::Not(FS::IsDir(path));

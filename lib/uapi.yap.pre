@@ -14,6 +14,17 @@
 #include <netinet/in.h>
 #include "dirent.h"
 
+seq FS::Permissions
+{
+	NONE,
+	EXECUTE,
+	WRITE,
+	WRITE_EXECUTE,
+	READ,
+	READ_EXECUTE,
+	READ_WRITE,
+	READ_WRITE_EXECUTE,
+}
 
 seq FS::Struct::Stat
 {

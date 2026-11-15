@@ -108,14 +108,13 @@ lab found;   return offset;
 
 
 
-// When reading left to right. MSB is 0.
-fn Mem::GetBitLeft(num, bit)
+fn Mem::GetBitBE(num, bit)
 {
     return (num >> (63 - bit)) & 1;
 }
 
-// When reading right to left. MSB is last. This is the native x86 order.
-fn Mem::GetBitRight(num, bit)
+// This is the native x86 order.
+fn Mem::GetBitLE(num, bit)
 {
     return (num >> bit) & 1;
 }
