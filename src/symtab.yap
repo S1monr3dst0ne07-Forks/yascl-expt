@@ -17,6 +17,30 @@ seq Symtab::Stuff
 	STR_TAB_MAP,       // map from symbol to offset into string table
 }
 
+fn Symtab::GenStrtabEntry(ctx, stuff, symbol)
+{
+	put base = stuff.Symtab::Stuff::STR_TAB_BASE_PTR;
+	put map  = stuff.Symtab::Stuff::STR_TAB_MAP;
+
+	// prevent redundant string entires
+	jump done ~ HT::Has(map, symbol);
+
+	// register offset into string table
+	put offset = IR::Addr(ctx) - base;
+	HT::Set(map, symbol, offset);
+	
+	// write actual string
+	put i = 0;
+	lab loop;
+		put char = symbol.i;
+		put i = i + 1;
+
+		IR::Push8(ctx, char);
+	jump loop ~ char;
+
+lab done;
+}
+
 fn Symtab::GenStrTab(ctx, stuff)
 {
 	// generates the string table
@@ -24,9 +48,6 @@ fn Symtab::GenStrTab(ctx, stuff)
 	// names.
 
 	put stuff.Symtab::Stuff::STR_TAB_BASE_PTR = IR::Addr(ctx);
-
-	put base = stuff.Symtab::Stuff::STR_TAB_BASE_PTR;
-	put map  = stuff.Symtab::Stuff::STR_TAB_MAP;
 
 	// the elf64 string table starts with an empty string.
 	// don't ask me why, it's just like that...
@@ -39,23 +60,14 @@ fn Symtab::GenStrTab(ctx, stuff)
 		jump ir_loop ~ (iter.IR::Node::OPCODE) != IR::Op::REF;
 
 		put symbol = iter.IR::Node::ARG;
-		jump ir_loop ~ HT::Has(map, symbol);
-		
-		// if symbol is not yet present in table,
-		// put it there and record it.
-		put offset = IR::Addr(ctx) - base;
-		HT::Set(map, symbol, offset);
-
-		put i = 0;
-		lab symbol_loop;
-			put char = symbol.i;
-			put i = i + 1;
-
-			IR::Push8(ctx, char);
-		jump symbol_loop ~ char;
+		Symtab::GenStrtabEntry(ctx, stuff, symbol);
 
 		jump ir_loop;
 	lab ir_done;
+
+	// write sections names
+	Symtab::GenStrtabEntry(ctx, stuff, ".strtab");
+	Symtab::GenStrtabEntry(ctx, stuff, ".symtab");
 
 	put stuff.Symtab::Stuff::STR_TAB_END_PTR = IR::Addr(ctx);
 }
@@ -109,6 +121,7 @@ fn Symtab::GenSymTab(ctx, stuff)
 fn Symtab::GenSectHdrs(ctx, stuff)
 {
 	put stuff.Symtab::Stuff::SECT_HDR_BASE_PTR = IR::Addr(ctx);
+	put map = stuff.Symtab::Stuff::STR_TAB_MAP;
 
 	// --- null section header ---
 	IR::Push32(ctx, 0); // sh_name      = 0
@@ -129,16 +142,16 @@ fn Symtab::GenSectHdrs(ctx, stuff)
 	put str_tab_offset = str_tab_base_ptr - Tmpl::Config::LOAD_ADDR;
 	put str_tab_size   = str_tab_end_ptr  - str_tab_base_ptr;
 
-	IR::Push32(ctx, 0             ); // sh_name      = 0
-	IR::Push32(ctx, 3             ); // sh_type      = SHT_STRTAB
-	IR::Push64(ctx, 0             ); // sh_flags     = 0
-	IR::Push64(ctx, 0             ); // sh_addr      = 0 (don't load)
-	IR::Push64(ctx, str_tab_offset); // sh_offset
-	IR::Push64(ctx, str_tab_size  ); // sh_size
-	IR::Push32(ctx, 0             ); // sh_link      = 0
-	IR::Push32(ctx, 0             ); // sh_info      = 0
-	IR::Push64(ctx, 0             ); // sh_addralign = 0
-	IR::Push64(ctx, 0             ); // sh_ent_size  = 0
+	IR::Push32(ctx, HT::Get(map, ".strtab")); // sh_name      = 0
+	IR::Push32(ctx, 3                      ); // sh_type      = SHT_STRTAB
+	IR::Push64(ctx, 0                      ); // sh_flags     = 0
+	IR::Push64(ctx, 0                      ); // sh_addr      = 0 (don't load)
+	IR::Push64(ctx, str_tab_offset         ); // sh_offset
+	IR::Push64(ctx, str_tab_size           ); // sh_size
+	IR::Push32(ctx, 0                      ); // sh_link      = 0
+	IR::Push32(ctx, 0                      ); // sh_info      = 0
+	IR::Push64(ctx, 0                      ); // sh_addralign = 0
+	IR::Push64(ctx, 0                      ); // sh_ent_size  = 0
 
 	// --- section header for symbol table ---
 	put sym_tab_base_ptr = stuff.Symtab::Stuff::SYM_TAB_BASE_PTR; 
@@ -147,16 +160,16 @@ fn Symtab::GenSectHdrs(ctx, stuff)
 	put sym_tab_offset = sym_tab_base_ptr - Tmpl::Config::LOAD_ADDR;
 	put sym_tab_size   = sym_tab_end_ptr  - sym_tab_base_ptr;
 
-	IR::Push32(ctx, 0             ); // sh_name      = 0
-	IR::Push32(ctx, 2             ); // sh_type      = SHT_SYMTAB
-	IR::Push64(ctx, 0             ); // sh_flags     = 0
-	IR::Push64(ctx, 0             ); // sh_addr      = 0 (don't load)
-	IR::Push64(ctx, sym_tab_offset); // sh_offset
-	IR::Push64(ctx, sym_tab_size  ); // sh_size
-	IR::Push32(ctx, 1             ); // sh_link      = 1
-	IR::Push32(ctx, 1             ); // sh_info      = 1
-	IR::Push64(ctx, 0             ); // sh_addralign = 0
-	IR::Push64(ctx, 24            ); // sh_ent_size  = 0
+	IR::Push32(ctx, HT::Get(map, ".symtab")); // sh_name      = 0
+	IR::Push32(ctx, 2                      ); // sh_type      = SHT_SYMTAB
+	IR::Push64(ctx, 0                      ); // sh_flags     = 0
+	IR::Push64(ctx, 0                      ); // sh_addr      = 0 (don't load)
+	IR::Push64(ctx, sym_tab_offset         ); // sh_offset
+	IR::Push64(ctx, sym_tab_size           ); // sh_size
+	IR::Push32(ctx, 1                      ); // sh_link      = 1
+	IR::Push32(ctx, 1                      ); // sh_info      = 1
+	IR::Push64(ctx, 0                      ); // sh_addralign = 0
+	IR::Push64(ctx, 24                     ); // sh_ent_size  = 0
 }
 
 fn Symtab::PatchMainTable(ctx, stuff)
@@ -169,6 +182,7 @@ fn Symtab::PatchMainTable(ctx, stuff)
 	IR::PatchDyn(ctx, 58 + Tmpl::Config::LOAD_ADDR, 64, 2); // e_shentsize = 0x40
 	IR::PatchDyn(ctx, 60 + Tmpl::Config::LOAD_ADDR, 3 , 2); // e_shnum     = 3
 	IR::Patch64 (ctx, 40 + Tmpl::Config::LOAD_ADDR, sect_hdr_base_offset);
+	IR::PatchDyn(ctx, 62 + Tmpl::Config::LOAD_ADDR, 1,  2); // e_shstrndx  = 1
 }
 
 
@@ -183,5 +197,4 @@ fn Symtab::Gen(ctx)
 	Symtab::PatchMainTable(ctx, stuff);
 	
 }
-
 
