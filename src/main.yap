@@ -61,11 +61,21 @@ fn maybe_run(opt)
 lab done;
 }
 
+fn add_entry_point_symbol(ctx)
+{
+    put entry_ref_node = IR::Emit(ctx, IR::Op::REF, "_yascl_entry");
+    put entry_ref_node.IR::Node::ADDR =
+    	Tmpl::Config::HEADER_SIZE +
+    	Tmpl::Config::LOAD_ADDR   ;
+}
+
+
 fn main(argc, argv)
 {
     put opt = cmdline(argc, argv);
 
     put ctx = Ctx::MakeGlobal();
+    add_entry_point_symbol(ctx);
 
     put root = Ast::Prog::File(opt.Options::SOURCE, ctx);
     Ast::Prog::Resolve(root, ctx);
