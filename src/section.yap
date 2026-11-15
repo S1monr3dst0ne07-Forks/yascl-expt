@@ -8,10 +8,13 @@
 
 seq Section::Stuff
 {
-	STR_TAB_BASE_PTR, // vaddr pointer to start of string table
-	STR_TAB_END_PTR , // vaddr pointer to end   of string table
-	SYM_TAB_BASE_PTR, // vaddr pointer to start of symbol table
-	SYM_TAB_END_PTR,  // vaddr pointer to end   of symbol table
+	PROGBIT_BASE_PTR,
+	STR_TAB_BASE_PTR,
+	SYM_TAB_BASE_PTR,
+
+	PROGBIT_END_PTR,
+	STR_TAB_END_PTR,
+	SYM_TAB_END_PTR,
 
 	SECT_HDR_BASE_PTR, // vaddr pointer to start of section headers
 	STR_TAB_MAP,       // map from symbol to offset into string table
@@ -68,6 +71,7 @@ fn Section::GenStrTab(ctx, stuff)
 	// write sections names
 	Section::GenStrtabEntry(ctx, stuff, ".strtab");
 	Section::GenStrtabEntry(ctx, stuff, ".symtab");
+	Section::GenStrtabEntry(ctx, stuff, ".all");
 
 	put stuff.Section::Stuff::STR_TAB_END_PTR = IR::Addr(ctx);
 }
@@ -170,6 +174,25 @@ fn Section::GenSectHdrs(ctx, stuff)
 	IR::Push32(ctx, 1                      ); // sh_info      = 1
 	IR::Push64(ctx, 0                      ); // sh_addralign = 0
 	IR::Push64(ctx, 24                     ); // sh_ent_size  = 0
+
+	// --- section header for all program data ---
+	put progbits_base_ptr = stuff.Section::Stuff::PROGBIT_BASE_PTR;
+	put progbits_end_ptr  = stuff.Section::Stuff::PROGBIT_END_PTR;
+
+	put progbits_offset = progbits_base_ptr - Tmpl::Config::LOAD_ADDR;
+	put progbits_size   = progbits_end_ptr  - progbits_base_ptr;
+
+	IR::Push32(ctx, HT::Get(map, ".all")   ); // sh_name      = 0
+	IR::Push32(ctx, 1                      ); // sh_type      = SHT_PROGBITS
+	IR::Push64(ctx, 0                      ); // sh_flags     = 0
+	IR::Push64(ctx, Tmpl::Config::LOAD_ADDR); // sh_addr      = LOAD_ADDR
+	IR::Push64(ctx, progbits_offset        ); // sh_offset
+	IR::Push64(ctx, progbits_size          ); // sh_size
+	IR::Push32(ctx, 0                      ); // sh_link      = 0
+	IR::Push32(ctx, 0                      ); // sh_info      = 0
+	IR::Push64(ctx, 0                      ); // sh_addralign = 0
+	IR::Push64(ctx, 0                      ); // sh_ent_size  = 0
+
 }
 
 fn Section::PatchMainTable(ctx, stuff)
@@ -180,7 +203,7 @@ fn Section::PatchMainTable(ctx, stuff)
 	put sect_hdr_base_offset = sect_hdr_base_ptr - Tmpl::Config::LOAD_ADDR;
 
 	IR::PatchDyn(ctx, 58 + Tmpl::Config::LOAD_ADDR, 64, 2); // e_shentsize = 0x40
-	IR::PatchDyn(ctx, 60 + Tmpl::Config::LOAD_ADDR, 3 , 2); // e_shnum     = 3
+	IR::PatchDyn(ctx, 60 + Tmpl::Config::LOAD_ADDR, 4 , 2); // e_shnum     = 4
 	IR::Patch64 (ctx, 40 + Tmpl::Config::LOAD_ADDR, sect_hdr_base_offset);
 	IR::PatchDyn(ctx, 62 + Tmpl::Config::LOAD_ADDR, 1,  2); // e_shstrndx  = 1
 }
@@ -189,6 +212,8 @@ fn Section::PatchMainTable(ctx, stuff)
 fn Section::Gen(ctx)
 {
 	put stuff = Chunk::New(Section::Stuff);
+	put stuff.Section::Stuff::PROGBIT_BASE_PTR = 120 + Tmpl::Config::LOAD_ADDR;
+	put stuff.Section::Stuff::PROGBIT_END_PTR  = IR::Addr(ctx);
 	put stuff.Section::Stuff::STR_TAB_MAP = HT::Create();
 
 	Section::GenStrTab     (ctx, stuff);

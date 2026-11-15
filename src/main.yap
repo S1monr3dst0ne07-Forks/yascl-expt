@@ -9,7 +9,7 @@ use "src/lex.yap"
 use "src/ctx.yap"
 use "src/error.yap"
 use "src/ast/prog.yap"
-use "src/symtab.yap"
+use "src/section.yap"
 
 
 seq Options
@@ -73,7 +73,7 @@ fn main(argc, argv)
     Ast::Prog::Compile(root, ctx);
     Ctx::LinkGlobal(ctx);
     IR::Asm(ctx);
-    Symtab::Gen(ctx);
+    Section::Gen(ctx);
 
     print("Compilation successful\n");
 
