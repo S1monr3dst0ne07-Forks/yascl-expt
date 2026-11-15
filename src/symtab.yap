@@ -24,14 +24,13 @@ fn Symtab::GenStrTab(ctx, stuff)
 	// names.
 
 	put stuff.Symtab::Stuff::STR_TAB_BASE_PTR = IR::Addr(ctx);
-	put map = stuff.Symtab::Stuff::STR_TAB_MAP;
+
+	put base = stuff.Symtab::Stuff::STR_TAB_BASE_PTR;
+	put map  = stuff.Symtab::Stuff::STR_TAB_MAP;
 
 	// the elf64 string table starts with an empty string.
 	// don't ask me why, it's just like that...
 	IR::Push8(ctx, '\0');
-
-	// the string table works based on offsets.
-	put offset = 0;
 
 	put iter = ctx.Ctx::Global::IR_ROOT;
 	lab ir_loop;
@@ -44,6 +43,7 @@ fn Symtab::GenStrTab(ctx, stuff)
 		
 		// if symbol is not yet present in table,
 		// put it there and record it.
+		put offset = IR::Addr(ctx) - base;
 		HT::Set(map, symbol, offset);
 
 		put i = 0;
@@ -51,7 +51,6 @@ fn Symtab::GenStrTab(ctx, stuff)
 			put char = symbol.i;
 			put i = i + 1;
 
-			put offset = offset + 1;
 			IR::Push8(ctx, char);
 		jump symbol_loop ~ char;
 
