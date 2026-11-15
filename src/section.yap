@@ -63,6 +63,8 @@ fn Section::GenStrTab(ctx, stuff)
 		jump ir_loop ~ (iter.IR::Node::OPCODE) != IR::Op::REF;
 
 		put symbol = iter.IR::Node::ARG;
+		jump ir_loop ~ symbol == Mem::NULL;
+
 		Section::GenStrtabEntry(ctx, stuff, symbol);
 
 		jump ir_loop;
@@ -106,7 +108,9 @@ fn Section::GenSymTab(ctx, stuff)
 		jump ir_loop ~ (iter.IR::Node::OPCODE) != IR::Op::REF;
 
 		put symbol = iter.IR::Node::ARG;
-		put addr   = (iter.IR::Node::ADDR);
+		jump ir_loop ~ symbol == Mem::NULL;
+
+		put addr   = iter.IR::Node::ADDR;
 		put offset = HT::Get(map, symbol);
 
 		IR::Push32(ctx, offset); // st_name
