@@ -6,7 +6,7 @@
 // this file. 
 
 
-seq Symtab::Stuff
+seq Section::Stuff
 {
 	STR_TAB_BASE_PTR, // vaddr pointer to start of string table
 	STR_TAB_END_PTR , // vaddr pointer to end   of string table
@@ -17,10 +17,10 @@ seq Symtab::Stuff
 	STR_TAB_MAP,       // map from symbol to offset into string table
 }
 
-fn Symtab::GenStrtabEntry(ctx, stuff, symbol)
+fn Section::GenStrtabEntry(ctx, stuff, symbol)
 {
-	put base = stuff.Symtab::Stuff::STR_TAB_BASE_PTR;
-	put map  = stuff.Symtab::Stuff::STR_TAB_MAP;
+	put base = stuff.Section::Stuff::STR_TAB_BASE_PTR;
+	put map  = stuff.Section::Stuff::STR_TAB_MAP;
 
 	// prevent redundant string entires
 	jump done ~ HT::Has(map, symbol);
@@ -41,13 +41,13 @@ fn Symtab::GenStrtabEntry(ctx, stuff, symbol)
 lab done;
 }
 
-fn Symtab::GenStrTab(ctx, stuff)
+fn Section::GenStrTab(ctx, stuff)
 {
 	// generates the string table
 	// with all of the function / label
 	// names.
 
-	put stuff.Symtab::Stuff::STR_TAB_BASE_PTR = IR::Addr(ctx);
+	put stuff.Section::Stuff::STR_TAB_BASE_PTR = IR::Addr(ctx);
 
 	// the elf64 string table starts with an empty string.
 	// don't ask me why, it's just like that...
@@ -60,22 +60,22 @@ fn Symtab::GenStrTab(ctx, stuff)
 		jump ir_loop ~ (iter.IR::Node::OPCODE) != IR::Op::REF;
 
 		put symbol = iter.IR::Node::ARG;
-		Symtab::GenStrtabEntry(ctx, stuff, symbol);
+		Section::GenStrtabEntry(ctx, stuff, symbol);
 
 		jump ir_loop;
 	lab ir_done;
 
 	// write sections names
-	Symtab::GenStrtabEntry(ctx, stuff, ".strtab");
-	Symtab::GenStrtabEntry(ctx, stuff, ".symtab");
+	Section::GenStrtabEntry(ctx, stuff, ".strtab");
+	Section::GenStrtabEntry(ctx, stuff, ".symtab");
 
-	put stuff.Symtab::Stuff::STR_TAB_END_PTR = IR::Addr(ctx);
+	put stuff.Section::Stuff::STR_TAB_END_PTR = IR::Addr(ctx);
 }
 
-fn Symtab::GenSymTab(ctx, stuff)
+fn Section::GenSymTab(ctx, stuff)
 {
-	put stuff.Symtab::Stuff::SYM_TAB_BASE_PTR = IR::Addr(ctx);
-	put map = stuff.Symtab::Stuff::STR_TAB_MAP;
+	put stuff.Section::Stuff::SYM_TAB_BASE_PTR = IR::Addr(ctx);
+	put map = stuff.Section::Stuff::STR_TAB_MAP;
 
 	//typedef struct {
 	//    uint32_t      st_name ;
@@ -115,13 +115,13 @@ fn Symtab::GenSymTab(ctx, stuff)
 		jump ir_loop;
 	lab ir_done;
 
-	put stuff.Symtab::Stuff::SYM_TAB_END_PTR = IR::Addr(ctx);
+	put stuff.Section::Stuff::SYM_TAB_END_PTR = IR::Addr(ctx);
 }
 
-fn Symtab::GenSectHdrs(ctx, stuff)
+fn Section::GenSectHdrs(ctx, stuff)
 {
-	put stuff.Symtab::Stuff::SECT_HDR_BASE_PTR = IR::Addr(ctx);
-	put map = stuff.Symtab::Stuff::STR_TAB_MAP;
+	put stuff.Section::Stuff::SECT_HDR_BASE_PTR = IR::Addr(ctx);
+	put map = stuff.Section::Stuff::STR_TAB_MAP;
 
 	// --- null section header ---
 	IR::Push32(ctx, 0); // sh_name      = 0
@@ -136,8 +136,8 @@ fn Symtab::GenSectHdrs(ctx, stuff)
 	IR::Push64(ctx, 0); // sh_ent_size  = 0
 
 	// --- section header for string table ---
-	put str_tab_base_ptr = stuff.Symtab::Stuff::STR_TAB_BASE_PTR;
-	put str_tab_end_ptr  = stuff.Symtab::Stuff::STR_TAB_END_PTR;
+	put str_tab_base_ptr = stuff.Section::Stuff::STR_TAB_BASE_PTR;
+	put str_tab_end_ptr  = stuff.Section::Stuff::STR_TAB_END_PTR;
 
 	put str_tab_offset = str_tab_base_ptr - Tmpl::Config::LOAD_ADDR;
 	put str_tab_size   = str_tab_end_ptr  - str_tab_base_ptr;
@@ -154,8 +154,8 @@ fn Symtab::GenSectHdrs(ctx, stuff)
 	IR::Push64(ctx, 0                      ); // sh_ent_size  = 0
 
 	// --- section header for symbol table ---
-	put sym_tab_base_ptr = stuff.Symtab::Stuff::SYM_TAB_BASE_PTR; 
-	put sym_tab_end_ptr  = stuff.Symtab::Stuff::SYM_TAB_END_PTR; 
+	put sym_tab_base_ptr = stuff.Section::Stuff::SYM_TAB_BASE_PTR; 
+	put sym_tab_end_ptr  = stuff.Section::Stuff::SYM_TAB_END_PTR; 
 
 	put sym_tab_offset = sym_tab_base_ptr - Tmpl::Config::LOAD_ADDR;
 	put sym_tab_size   = sym_tab_end_ptr  - sym_tab_base_ptr;
@@ -172,11 +172,11 @@ fn Symtab::GenSectHdrs(ctx, stuff)
 	IR::Push64(ctx, 24                     ); // sh_ent_size  = 0
 }
 
-fn Symtab::PatchMainTable(ctx, stuff)
+fn Section::PatchMainTable(ctx, stuff)
 {
 	// patch main elf table to make 
 	// section header accessible.
-	put sect_hdr_base_ptr    = stuff.Symtab::Stuff::SECT_HDR_BASE_PTR;
+	put sect_hdr_base_ptr    = stuff.Section::Stuff::SECT_HDR_BASE_PTR;
 	put sect_hdr_base_offset = sect_hdr_base_ptr - Tmpl::Config::LOAD_ADDR;
 
 	IR::PatchDyn(ctx, 58 + Tmpl::Config::LOAD_ADDR, 64, 2); // e_shentsize = 0x40
@@ -186,15 +186,15 @@ fn Symtab::PatchMainTable(ctx, stuff)
 }
 
 
-fn Symtab::Gen(ctx)
+fn Section::Gen(ctx)
 {
-	put stuff = Chunk::New(Symtab::Stuff);
-	put stuff.Symtab::Stuff::STR_TAB_MAP = HT::Create();
+	put stuff = Chunk::New(Section::Stuff);
+	put stuff.Section::Stuff::STR_TAB_MAP = HT::Create();
 
-	Symtab::GenStrTab     (ctx, stuff);
-	Symtab::GenSymTab     (ctx, stuff);
-	Symtab::GenSectHdrs   (ctx, stuff);
-	Symtab::PatchMainTable(ctx, stuff);
+	Section::GenStrTab     (ctx, stuff);
+	Section::GenSymTab     (ctx, stuff);
+	Section::GenSectHdrs   (ctx, stuff);
+	Section::PatchMainTable(ctx, stuff);
 	
 }
 
