@@ -106,7 +106,7 @@ fn Section::GenSymTab(ctx, stuff)
 		jump ir_loop ~ (iter.IR::Node::OPCODE) != IR::Op::REF;
 
 		put symbol = iter.IR::Node::ARG;
-		put addr   = (iter.IR::Node::ADDR) - Tmpl::Config::HEADER_SIZE;
+		put addr   = (iter.IR::Node::ADDR);
 		put offset = HT::Get(map, symbol);
 
 		IR::Push32(ctx, offset); // st_name
@@ -185,7 +185,8 @@ fn Section::GenSectHdrs(ctx, stuff)
 	IR::Push32(ctx, HT::Get(map, ".all")   ); // sh_name      = 0
 	IR::Push32(ctx, 1                      ); // sh_type      = SHT_PROGBITS
 	IR::Push64(ctx, 7                      ); // sh_flags     = WAX
-	IR::Push64(ctx, Tmpl::Config::LOAD_ADDR); // sh_addr      = LOAD_ADDR
+	IR::Push64(ctx, Tmpl::Config::LOAD_ADDR + Tmpl::Config::HEADER_SIZE
+	                                       ); // sh_addr      = LOAD_ADDR
 	IR::Push64(ctx, progbits_offset        ); // sh_offset
 	IR::Push64(ctx, progbits_size          ); // sh_size
 	IR::Push32(ctx, 0                      ); // sh_link      = 0
