@@ -106,7 +106,7 @@ fn Section::GenSymTab(ctx, stuff)
 		jump ir_loop ~ (iter.IR::Node::OPCODE) != IR::Op::REF;
 
 		put symbol = iter.IR::Node::ARG;
-		put addr   = iter.IR::Node::ADDR;
+		put addr   = (iter.IR::Node::ADDR) - Tmpl::Config::HEADER_SIZE;
 		put offset = HT::Get(map, symbol);
 
 		IR::Push32(ctx, offset); // st_name
@@ -212,7 +212,8 @@ fn Section::PatchMainTable(ctx, stuff)
 fn Section::Gen(ctx)
 {
 	put stuff = Chunk::New(Section::Stuff);
-	put stuff.Section::Stuff::PROGBIT_BASE_PTR = 120 + Tmpl::Config::LOAD_ADDR;
+	put stuff.Section::Stuff::PROGBIT_BASE_PTR = 
+		Tmpl::Config::HEADER_SIZE + Tmpl::Config::LOAD_ADDR;
 	put stuff.Section::Stuff::PROGBIT_END_PTR  = IR::Addr(ctx);
 	put stuff.Section::Stuff::STR_TAB_MAP = HT::Create();
 
