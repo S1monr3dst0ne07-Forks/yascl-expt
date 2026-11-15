@@ -63,19 +63,25 @@ lab done;
 
 fn add_entry_point_symbol(ctx)
 {
-    put entry_ref_node = IR::Emit(ctx, IR::Op::REF, "_yascl_entry");
-    put entry_ref_node.IR::Node::ADDR =
+	put root_node = ctx.Ctx::Global::IR_ROOT;
+	put entry_ref_node = Chunk::New(IR::Node);
+
+	put entry_ref_node.IR::Node::OPCODE = IR::Op::REF;
+	put entry_ref_node.IR::Node::ARG    = "_yascl_entry";
+	put entry_ref_node.IR::Node::NEXT   = root_node.IR::Node::NEXT;
+	put entry_ref_node.IR::Node::PREV   = root_node;
+    put entry_ref_node.IR::Node::ADDR   =
     	Tmpl::Config::HEADER_SIZE +
     	Tmpl::Config::LOAD_ADDR   ;
+
+    put root_node.IR::Node::NEXT = entry_ref_node;
 }
 
 
 fn main(argc, argv)
 {
     put opt = cmdline(argc, argv);
-
     put ctx = Ctx::MakeGlobal();
-    add_entry_point_symbol(ctx);
 
     put root = Ast::Prog::File(opt.Options::SOURCE, ctx);
     Ast::Prog::Resolve(root, ctx);
@@ -83,10 +89,11 @@ fn main(argc, argv)
     Ast::Prog::Compile(root, ctx);
     Ctx::LinkGlobal(ctx);
     IR::Asm(ctx);
+
+    add_entry_point_symbol(ctx);
     Section::Gen(ctx);
 
     print("Compilation successful\n");
-
     Ctx::Output(ctx, opt.Options::OUTPUT);
 
     Ast::Prog::Void(root);
