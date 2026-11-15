@@ -112,7 +112,7 @@ fn Section::GenSymTab(ctx, stuff)
 		IR::Push32(ctx, offset); // st_name
 		IR::Push8 (ctx, 16    ); // st_info  = STT_NOTYPE | STB_GLOBAL
 		IR::Push8 (ctx, 0     ); // st_other = STV_DEFAULT
-		IR::Push16(ctx, 65521 ); // st_shndx = SHN_ABS
+		IR::Push16(ctx, 3     ); // st_shndx = `.all`
 		IR::Push64(ctx, addr  ); // st_value
 		IR::Push64(ctx, 0     ); // st_size  = 0
 
@@ -170,7 +170,7 @@ fn Section::GenSectHdrs(ctx, stuff)
 	IR::Push64(ctx, 0                      ); // sh_addr      = 0 (don't load)
 	IR::Push64(ctx, sym_tab_offset         ); // sh_offset
 	IR::Push64(ctx, sym_tab_size           ); // sh_size
-	IR::Push32(ctx, 1                      ); // sh_link      = 1
+	IR::Push32(ctx, 1                      ); // sh_link      = `.strtab`
 	IR::Push32(ctx, 1                      ); // sh_info      = 1
 	IR::Push64(ctx, 0                      ); // sh_addralign = 0
 	IR::Push64(ctx, 24                     ); // sh_ent_size  = 0
