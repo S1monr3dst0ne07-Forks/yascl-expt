@@ -1,8 +1,10 @@
 
+use "lib/debug.yap"
 
 fn main()
 {
-	test(
+	print("test: %d\n", 10);
+
 }
 
 
