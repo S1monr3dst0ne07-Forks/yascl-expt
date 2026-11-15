@@ -1,5 +1,7 @@
 
 
+use "lib/bool.yap"
+
 seq Mem 
 {
     // null pointer contant.
@@ -104,3 +106,34 @@ lab missing; return default;
 lab found;   return offset;
 }
 
+
+
+fn Mem::GetBitBE(num, bit)
+{
+    return (num >> (63 - bit)) & 1;
+}
+
+// This is the native x86 order.
+fn Mem::GetBitLE(num, bit)
+{
+    return (num >> bit) & 1;
+}
+
+
+
+fn Mem::Cmp(a, b, count)
+{
+    put i = 0;
+    lab loop;
+        jump success ~ i     == count;
+
+        jump fail    ~ (a.i) != (b.i);
+
+        put i = i + 1;
+    jump loop;
+
+    lab success;
+        return Bool::TRUE;
+    lab fail;
+        return Bool::FALSE;
+}
