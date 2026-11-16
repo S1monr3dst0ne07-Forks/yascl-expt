@@ -30,6 +30,8 @@
 
 	- operator precedence
 
+	- factor out keywords into `config.yap`
+
 
 - stdlib
 	- implement Random library

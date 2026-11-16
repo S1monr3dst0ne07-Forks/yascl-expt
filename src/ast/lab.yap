@@ -23,10 +23,11 @@ fn Ast::Lab::Parse(stream)
 fn Ast::Lab::Compile(node, ctx)
 {
     put local = ctx.Ctx::Global::LOCAL;
+
     HT::Set(
         local.Ctx::Local::LAB_TABLE,
         node.Ast::Lab::NAME,
-        IR::Emit(ctx, IR::Op::REF),
+        IR::Emit(ctx, IR::Op::REF, Mem::NULL),
     );
 }
 

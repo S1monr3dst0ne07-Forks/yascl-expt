@@ -9,6 +9,7 @@ use "src/lex.yap"
 use "src/ctx.yap"
 use "src/error.yap"
 use "src/ast/prog.yap"
+use "src/section.yap"
 
 
 seq Options
@@ -60,10 +61,26 @@ fn maybe_run(opt)
 lab done;
 }
 
+fn add_entry_point_symbol(ctx)
+{
+	put root_node = ctx.Ctx::Global::IR_ROOT;
+	put entry_ref_node = Chunk::New(IR::Node);
+
+	put entry_ref_node.IR::Node::OPCODE = IR::Op::REF;
+	put entry_ref_node.IR::Node::ARG    = "_yascl_entry";
+	put entry_ref_node.IR::Node::NEXT   = root_node.IR::Node::NEXT;
+	put entry_ref_node.IR::Node::PREV   = root_node;
+    put entry_ref_node.IR::Node::ADDR   =
+    	Tmpl::Config::HEADER_SIZE +
+    	Tmpl::Config::LOAD_ADDR   ;
+
+    put root_node.IR::Node::NEXT = entry_ref_node;
+}
+
+
 fn main(argc, argv)
 {
     put opt = cmdline(argc, argv);
-
     put ctx = Ctx::MakeGlobal();
 
     put root = Ast::Prog::File(opt.Options::SOURCE, ctx);
@@ -73,8 +90,10 @@ fn main(argc, argv)
     Ctx::LinkGlobal(ctx);
     IR::Asm(ctx);
 
-    print("Compilation successful\n");
+    add_entry_point_symbol(ctx);
+    Section::Gen(ctx);
 
+    print("Compilation successful\n");
     Ctx::Output(ctx, opt.Options::OUTPUT);
 
     Ast::Prog::Void(root);

@@ -91,7 +91,11 @@ fn Ast::FnDef::Compile(node, ctx)
     HT::Set(
         ctx.Ctx::Global::DEF_TABLE, // table
         node.Ast::FnDef::NAME,      // from it's name
-        IR::Emit(ctx, IR::Op::REF), // to   it's node
+        IR::Emit(                   // to   it's node
+        	ctx, 
+        	IR::Op::REF,
+        	node.Ast::FnDef::NAME,
+        ), 
     );
 
     IR::Emit(ctx, IR::Op::ENTER, frame_size);
