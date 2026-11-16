@@ -21,12 +21,9 @@ class YasclBacktrace(gdb.Command):
 
 		if fn_name == 'main': return 0
 
-		last_rsp = self.read8(rbp)
-		ret_addr = self.read8(last_rsp + 8)
-
+		ret_addr    = frame.older().pc()
 		call_offset = self.read4(ret_addr - 4, signed=True)
 		call_target = ret_addr + call_offset
-
 		if call_target < 0: return 0
 
 		inf = gdb.selected_inferior()
@@ -69,7 +66,7 @@ class YasclBacktrace(gdb.Command):
 				param_count = self.param_count(frame)
 
 				params = [
-					self.read8(rbp - (x + 1) * 8)
+					self.read8(rbp - (x+1)*8)
 					for x in range(param_count)
 				]
 
