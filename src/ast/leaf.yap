@@ -35,8 +35,27 @@ seq Ast::Leaf::Kind
     ARRAY,
     CHAR,
     SUBEXPR,
+    FN_PTR,
+    FN_PTR_CALL,
 }
 
+fn Ast::Leaf::ParseCallParams(stream)
+{
+    Lex::Expect(stream, "(");
+    put params = Dyn::Create();
+    
+    lab call_loop;
+        jump call_done ~ Lex::Test(stream, ")", Lex::Kind::PAREN);
+        Dyn::Push(params, Ast::Expr::Parse(stream));
+        
+        jump call_loop ~ Lex::TestNeg(stream, ",", Lex::Kind::SYMBOL);
+	        Lex::Expect(stream, ",");
+        jump call_loop;
+    lab call_done;
+
+    Lex::Expect(stream, ")");
+    return params;
+}
 
 fn Ast::Leaf::Local::MakeLeaf(value, kind, info)
 {
@@ -67,9 +86,29 @@ fn Ast::Leaf::Parse(stream)
     jump string    ~ tok_kind == Lex::Kind::DOUBLE_QUOTE;
     jump sub_expr  ~ Str::Diff(content, "(") == 0;
     jump array     ~ Str::Diff(content, "[") == 0;
+    jump fn_ptr    ~ Str::Diff(content, "@") == 0;
     jump call      ~ Str::Diff(next, "(") == 0;
     jump number    ~ Str::IsNumber(content);
     jump meta;
+
+lab fn_ptr;
+	put name = Lex::Pop(stream);
+
+	// might be a fn ptr call
+	jump fn_ptr_call ~ Lex::Test(stream, "(", Lex::Kind::PAREN);
+
+    return Ast::Leaf::Local::MakeLeaf(
+        Str::Copy(name), Ast::Leaf::Kind::FN_PTR, info
+    );
+
+lab fn_ptr_call;
+    put subnode = Chunk::New(Ast::Leaf::Call);
+    put subnode.Ast::Leaf::Call::NAME = Str::Copy(name);
+    put subnode.Ast::Leaf::Call::PARAMS = Ast::Leaf::ParseCallParams(stream);
+
+    return Ast::Leaf::Local::MakeLeaf(
+        subnode, Ast::Leaf::Kind::FN_PTR_CALL, info
+    );
 
 lab sub_expr;
     put expr = Ast::Expr::Parse(stream);
@@ -115,22 +154,9 @@ lab string;
 
 
 lab call;
-    Lex::Expect(stream, "(");
-    put params = Dyn::Create();
-    
-    lab call_loop;
-        jump call_done ~ Lex::Test(stream, ")", Lex::Kind::PAREN);
-        Dyn::Push(params, Ast::Expr::Parse(stream));
-        
-        jump call_loop ~ Lex::TestNeg(stream, ",", Lex::Kind::SYMBOL);
-	        Lex::Expect(stream, ",");
-        jump call_loop;
-    lab call_done;
-
-    Lex::Expect(stream, ")");
     put subnode = Chunk::New(Ast::Leaf::Call);
     put subnode.Ast::Leaf::Call::NAME = Str::Copy(content);
-    put subnode.Ast::Leaf::Call::PARAMS = params;
+    put subnode.Ast::Leaf::Call::PARAMS = Ast::Leaf::ParseCallParams(stream);
 
     return Ast::Leaf::Local::MakeLeaf(
         subnode, Ast::Leaf::Kind::CALL, info
@@ -226,7 +252,51 @@ fn Ast::Leaf::Load(node, ctx)
     jump load_string    ~ kind == Ast::Leaf::Kind::STRING;
     jump load_array     ~ kind == Ast::Leaf::Kind::ARRAY;
     jump load_char      ~ kind == Ast::Leaf::Kind::CHAR;
+
+    jump load_fn_ptr      ~ kind == Ast::Leaf::Kind::FN_PTR;
+    jump load_fn_ptr_call ~ kind == Ast::Leaf::Kind::FN_PTR_CALL;
+
     Error::LexError(info, "Internal error: meta node while Ast::Leaf::Load");
+    jump done;
+
+lab load_fn_ptr;
+	Dyn::Push(
+		ctx.Ctx::Global::CALL_TABLE,
+		IR::Emit(ctx, IR::Op::LOAD_FN_PTR, value)
+	);
+	jump done;
+lab load_fn_ptr_call;
+    put var_name = value.Ast::Leaf::Call::NAME;
+    put params   = value.Ast::Leaf::Call::PARAMS;
+    put param_count = Dyn::Size(params);
+
+    jump fnptr_num_param_fine ~ param_count < 8;
+        Error::LexError(
+            info,
+            "Call to function pointer `%s` with %d parameter, only up to 7 paramters are allowed",
+            var_name,
+            param_count,
+        );
+    lab fnptr_num_param_fine;
+
+    put i = 0;
+    lab fnptr_push_loop;
+        jump fnptr_push_done ~ i == param_count;
+        put param = Dyn::Ptr(params).i;
+        put i = i + 1;
+
+        Ast::Expr::Load(param, ctx);
+        IR::Emit(ctx, IR::Op::PUSH);
+        jump fnptr_push_loop;
+    lab fnptr_push_done;
+    lab fnptr_pop_loop;
+        jump fnptr_pop_done ~ i == 0;
+        put i = i - 1;
+        IR::Emit(ctx, IR::Op::STORE_PARAM, i);
+        jump fnptr_pop_loop;
+    lab fnptr_pop_done;
+    
+    IR::Emit(ctx, IR::Op::CALL_FN_PTR, var_name);
     jump done;
 
 lab load_char;   

@@ -65,6 +65,10 @@ seq IR::Op
     OFFSET_STORE,   // mov [rbx + arg], rax
 
     SYSCALL,
+
+    // function pointer stuff
+    LOAD_FN_PTR, //     alpha
+    CALL_FN_PTR, // kai omega
 }
 
 seq IR::FloatOp
