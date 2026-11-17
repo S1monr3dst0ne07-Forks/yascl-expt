@@ -206,6 +206,7 @@ fn Ast::Leaf::Resolve(node, ctx)
     // recursive resolve
     jump subexpr ~ kind == Ast::Leaf::Kind::SUBEXPR;
     jump call    ~ kind == Ast::Leaf::Kind::CALL;
+    jump call    ~ kind == Ast::Leaf::Kind::FN_PTR_CALL;
     jump array   ~ kind == Ast::Leaf::Kind::ARRAY;
 
     jump done    ~ kind != Ast::Leaf::Kind::META;
