@@ -257,10 +257,11 @@ fn IR::PostPatch(ctx, patch_nodes)
         put arg    = node.IR::Node::ARG; 
         put addr   = node.IR::Node::ADDR;
 
-        jump op_string ~ opcode == IR::Op::LOAD_STRING;
-        jump op_jmp    ~ opcode == IR::Op::JMP;
-        jump op_jmp    ~ opcode == IR::Op::JNZ;
-        jump op_call   ~ opcode == IR::Op::CALL;
+        jump op_string      ~ opcode == IR::Op::LOAD_STRING;
+        jump op_jmp         ~ opcode == IR::Op::JMP;
+        jump op_jmp         ~ opcode == IR::Op::JNZ;
+        jump op_call        ~ opcode == IR::Op::CALL;
+        jump op_load_fn_ptr ~ opcode == IR::Op::LOAD_FN_PTR;
         jump loop;
 
         lab op_string;
@@ -289,6 +290,10 @@ fn IR::PostPatch(ctx, patch_nodes)
             IR::Patch32(ctx, addr, offset);
             jump loop;
 
+        lab op_load_fn_ptr;
+        	put target_addr = arg.IR::Node::ADDR;
+        	IR::Patch64(ctx, addr, target_addr);
+        	jump loop;
 
         jump loop;
     lab done;
@@ -358,7 +363,23 @@ lab loop;
 
     jump asm_float      ~ opcode == IR::Op::FLOAT;
 
+    jump asm_load_fn_ptr ~ opcode == IR::Op::LOAD_FN_PTR;
+    jump asm_call_fn_ptr ~ opcode == IR::Op::CALL_FN_PTR;
+
     Error::PrintError("INTERNAL: Invalid IR opcode %d", [opcode]);
+
+lab asm_load_fn_ptr;
+	IR::PushREXW(ctx);
+	IR::Push8(ctx, 184);
+	put iter.IR::Node::ADDR = IR::Addr(ctx);
+	IR::Push64(ctx, 0); //rel64
+	Dyn::Push(patch_nodes, iter);
+	jump loop;
+lab asm_call_fn_ptr;
+	IR::Push8(ctx, 255);
+	IR::Push8(ctx, 149);
+	IR::Push32(ctx, (1 << 32) - arg);
+	jump loop;
 
 lab asm_ref;
     put iter.IR::Node::ADDR = IR::Addr(ctx);

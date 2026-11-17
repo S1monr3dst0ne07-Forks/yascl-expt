@@ -296,7 +296,9 @@ lab load_fn_ptr_call;
         jump fnptr_pop_loop;
     lab fnptr_pop_done;
     
-    IR::Emit(ctx, IR::Op::CALL_FN_PTR, var_name);
+    jump var_not_exist ~ Bool::Not(Ctx::VarExists(ctx, var_name));
+    put addr = Ctx::VarLookup(ctx, var_name);
+    IR::Emit(ctx, IR::Op::CALL_FN_PTR, addr);
     jump done;
 
 lab load_char;   
