@@ -193,6 +193,7 @@ fn Lex::Tokenize(path)
     put iter = buffer;
     
     put i = 0;
+    put __last_char = '\0';
     lab loop;
         put char = src.i;
         jump done ~ char == '\0';
@@ -206,6 +207,9 @@ fn Lex::Tokenize(path)
 
         // state transition. or must trigger on symbol.
         put transition = (kind != last) | (last == Lex::Kind::PAREN);
+
+        // hack to parse floating point prefix `F`
+        put transition = transition | ((__last_char == 'F') & Str::IsDigit(char));
 
         // can emit?
         put unlocked = Bool::Not(state_comment)
@@ -256,6 +260,7 @@ fn Lex::Tokenize(path)
         lab skip_write;
 
         put last = kind;
+        put __last_char = char;
     jump loop;
     lab done;
 

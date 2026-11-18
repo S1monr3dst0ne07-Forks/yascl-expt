@@ -66,6 +66,21 @@ fn Ast::Leaf::Local::MakeLeaf(value, kind, info)
     return node;
 }
 
+fn Ast::Leaf::ParseFloat(stream)
+{
+	put real = Str::ToInt(Lex::Pop(stream));
+	Lex::Expect(stream, ".");
+	put frac_string = Lex::Pop(stream);
+
+	put value = Utils::FloatEncode(
+		real, 
+		Str::ToInt(frac_string), 
+		Str::Len(frac_string)
+	);
+
+	return value;
+}
+
 fn Ast::Leaf::Parse(stream)
 {
     put info = Lex::Info(stream);
@@ -88,25 +103,17 @@ fn Ast::Leaf::Parse(stream)
     jump call      ~ Str::Diff(next, "(") == 0;
     jump number    ~ Str::IsNumber(content);
 
-    jump float_f ~ ((content.0) == 'F') & Str::IsNumber(content : 1); // Cdev's  syntax
-    jump float   ~ ((content.0) == '#') & Str::IsNumber(next       ); // S1mon's syntax
+    jump float ~ Str::Cmp(content, "F") & Str::IsNumber(next); // Cdev's  syntax
+    jump float ~ Str::Cmp(content, "#") & Str::IsNumber(next); // S1mon's syntax
 
     jump meta;
-
-// warning the float stuff is really bad code!
-lab float_f;
-	put real = Str::ToInt(content : 1);
-	Lex::Expect(stream, ".");
-	put frac_string = Lex::Pop(stream);
-	put value = Utils::FloatEncode(real, Str::ToInt(frac_string), Str::Len(frac_string));
-	return Ast::Leaf::Local::MakeLeaf(value, Ast::Leaf::Kind::NUMBER, info);
 	
 lab float;
-	put real = Str::ToInt(Lex::Pop(stream));
-	Lex::Expect(stream, ".");
-	put frac_string = Lex::Pop(stream);
-	put value = Utils::FloatEncode(real, Str::ToInt(frac_string), Str::Len(frac_string));
-	return Ast::Leaf::Local::MakeLeaf(value, Ast::Leaf::Kind::NUMBER, info);
+	return Ast::Leaf::Local::MakeLeaf(
+		Ast::Leaf::ParseFloat(stream),
+		Ast::Leaf::Kind::NUMBER, 
+		info,
+	);
 
 lab fn_ptr;
 	put name = Lex::Pop(stream);
