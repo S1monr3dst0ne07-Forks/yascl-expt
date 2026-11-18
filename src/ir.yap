@@ -66,9 +66,13 @@ seq IR::Op
 
     SYSCALL,
 
+	// experimental stuff from here on out...
+
     // function pointer stuff
     LOAD_FN_PTR, //     alpha
     CALL_FN_PTR, // kai omega
+
+    NEGATE,
 }
 
 seq IR::FloatOp
@@ -366,7 +370,15 @@ lab loop;
     jump asm_load_fn_ptr ~ opcode == IR::Op::LOAD_FN_PTR;
     jump asm_call_fn_ptr ~ opcode == IR::Op::CALL_FN_PTR;
 
+    jump asm_negate      ~ opcode == IR::Op::NEGATE;
+
     Error::PrintError("INTERNAL: Invalid IR opcode %d", [opcode]);
+
+lab asm_negate;
+	IR::PushREXW(ctx);
+	IR::Push8(ctx, 247);
+	IR::Push8(ctx, 216);
+	jump loop;
 
 lab asm_load_fn_ptr;
 	IR::PushREXW(ctx);

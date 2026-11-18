@@ -208,8 +208,9 @@ fn Lex::Tokenize(path)
         // state transition. or must trigger on symbol.
         put transition = (kind != last) | (last == Lex::Kind::PAREN);
 
-        // hack to parse floating point prefix `F`
+        // hacks to parse floating point prefixes
         put transition = transition | ((__last_char == 'F') & Str::IsDigit(char));
+        put transition = transition | ((__last_char == '#') & (char == '-')     );
 
         // can emit?
         put unlocked = Bool::Not(state_comment)

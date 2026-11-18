@@ -4,10 +4,10 @@ use "lib/debug.yap"
 
 fn main()
 {
-	print("%f\n", [#12.0034]);
-	print("%f\n", [F69.420]);
+	print("%d\n", [-(-10 - 5)]);
 
-	print("%f\n", [F1.2 ~+ #4.8]);
+	print("%f\n", [#-3.5 ~+ # 1.5]);
+	print("%f\n", [#-3.5 ~+ #-1.5]);
 }
 
 

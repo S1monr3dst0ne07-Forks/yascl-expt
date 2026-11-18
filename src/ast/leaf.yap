@@ -37,6 +37,8 @@ seq Ast::Leaf::Kind
     SUBEXPR,
     FN_PTR,
     FN_PTR_CALL,
+
+    MINUS,
 }
 
 fn Ast::Leaf::ParseCallParams(stream)
@@ -68,6 +70,12 @@ fn Ast::Leaf::Local::MakeLeaf(value, kind, info)
 
 fn Ast::Leaf::ParseFloat(stream)
 {
+	put sign = 0;
+	jump no_minus ~ Lex::TestNeg(stream, "-", Lex::Kind::SYMBOL);
+		Lex::Pop(stream);
+		put sign = 1;
+	lab no_minus;
+
 	put real = Str::ToInt(Lex::Pop(stream));
 	Lex::Expect(stream, ".");
 	put frac_string = Lex::Pop(stream);
@@ -78,7 +86,7 @@ fn Ast::Leaf::ParseFloat(stream)
 		Str::Len(frac_string)
 	);
 
-	return value;
+	return value | (sign << 63);
 }
 
 fn Ast::Leaf::Parse(stream)
@@ -97,16 +105,23 @@ fn Ast::Leaf::Parse(stream)
 
     jump char_lit  ~ tok_kind == Lex::Kind::SINGLE_QUOTE;
     jump string    ~ tok_kind == Lex::Kind::DOUBLE_QUOTE;
+    jump minus     ~ Str::Diff(content, "-") == 0;
     jump sub_expr  ~ Str::Diff(content, "(") == 0;
     jump array     ~ Str::Diff(content, "[") == 0;
     jump fn_ptr    ~ Str::Diff(content, "@") == 0;
     jump call      ~ Str::Diff(next, "(") == 0;
     jump number    ~ Str::IsNumber(content);
 
-    jump float ~ Str::Cmp(content, "F") & Str::IsNumber(next); // Cdev's  syntax
-    jump float ~ Str::Cmp(content, "#") & Str::IsNumber(next); // S1mon's syntax
+    jump float ~ Str::Cmp(content, "F") & (Str::IsNumber(next) | ((next.0) == '-')); // Cdev's  syntax
+    jump float ~ Str::Cmp(content, "#") & (Str::IsNumber(next) | ((next.0) == '-')); // S1mon's syntax
 
     jump meta;
+
+lab minus;
+	return Ast::Leaf::Local::MakeLeaf(
+		Ast::Leaf::Parse(stream), Ast::Leaf::Kind::MINUS, info,
+	);
+
 	
 lab float;
 	return Ast::Leaf::Local::MakeLeaf(
@@ -229,6 +244,7 @@ fn Ast::Leaf::Resolve(node, ctx)
 
     // recursive resolve
     jump subexpr ~ kind == Ast::Leaf::Kind::SUBEXPR;
+    jump minus   ~ kind == Ast::Leaf::Kind::MINUS;
     jump call    ~ kind == Ast::Leaf::Kind::CALL;
     jump call    ~ kind == Ast::Leaf::Kind::FN_PTR_CALL;
     jump array   ~ kind == Ast::Leaf::Kind::ARRAY;
@@ -248,6 +264,9 @@ fn Ast::Leaf::Resolve(node, ctx)
 
     lab subexpr;
         Ast::Expr::Resolve(value, ctx);
+        jump done;
+    lab minus;
+        Ast::Leaf::Resolve(value, ctx);
         jump done;
 
     lab call;
@@ -277,12 +296,18 @@ fn Ast::Leaf::Load(node, ctx)
     jump load_string    ~ kind == Ast::Leaf::Kind::STRING;
     jump load_array     ~ kind == Ast::Leaf::Kind::ARRAY;
     jump load_char      ~ kind == Ast::Leaf::Kind::CHAR;
+    jump load_minus     ~ kind == Ast::Leaf::Kind::MINUS;
 
     jump load_fn_ptr      ~ kind == Ast::Leaf::Kind::FN_PTR;
     jump load_fn_ptr_call ~ kind == Ast::Leaf::Kind::FN_PTR_CALL;
 
     Error::LexError(info, "Internal error: meta node while Ast::Leaf::Load");
     jump done;
+
+lab load_minus;
+    Ast::Leaf::Load(value, ctx);
+	IR::Emit(ctx, IR::Op::NEGATE);
+	jump done;
 
 lab load_fn_ptr;
 	Dyn::Push(
