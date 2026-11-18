@@ -97,7 +97,6 @@ fn Ast::Expr::Parse(stream)
 
 fn Ast::Expr::FloatLiteral(node)
 {
-	// EXPERIMENTAL FEATURE
 	// convert to floating point literal
 	// if lhs and rhs of dot operator are
 	// integer literals.
