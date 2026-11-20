@@ -226,32 +226,33 @@ fn IR::PushCompare(ctx, cond)
 }
 
 fn IR::PostStatic(ctx, static_nodes)
-    // static patches are keeped separate.
-    // they are computed last which allows
-    // truncation of the binary.
-    // this also makes the compiler faster,
-    // because it doesn't have to emit megabytes
-    // of zero-initialized static buffers.
 {
     put base_ptr = IR::Addr(ctx);
-    put offset = 0;
     put i = 0;
 
     lab loop;
         jump done ~ i == Dyn::Size(static_nodes);
         put node = Dyn::Ptr(static_nodes).i;
-        put addr = node.IR::Node::ADDR;
-        put arg  = node.IR::Node::ARG;
-        put buffer_size = arg << 3;
+        put patch_addr = node.IR::Node::ADDR;
+        put buf_size   = node.IR::Node::ARG;
 
-        IR::Patch64(ctx, addr, base_ptr + offset);
+		put target_addr = IR::Addr(ctx);
+        IR::Patch32(ctx, patch_addr, (target_addr - patch_addr) - 4);
+
+        put j = 0 - 1;
+        lab mat_loop;
+        	jump mat_done ~ j == buf_size;
+        	put j = j + 1;
+
+        	IR::Push64(ctx, 0);
+			jump mat_loop;
+		lab mat_done;
 
         put i = i + 1;
-        put offset = offset + buffer_size;
         jump loop;
     lab done;
 
-    put ctx.Ctx::Global::STATIC_OFFSET = offset;
+    put ctx.Ctx::Global::STATIC_OFFSET = IR::Addr(ctx) - base_ptr;
 }
 
 fn IR::PostPatch(ctx, patch_nodes)
@@ -285,7 +286,7 @@ fn IR::PostPatch(ctx, patch_nodes)
                 IR::Push64(ctx, char);
             jump op_string_loop ~ char != '\0';
 
-            IR::Patch64(ctx, addr, base_ptr);
+            IR::Patch32(ctx, addr, (base_ptr - addr) - 4);
             jump loop;
 
 
@@ -301,11 +302,17 @@ fn IR::PostPatch(ctx, patch_nodes)
             jump loop;
 
         lab op_load_fn_ptr;
+        	jump error_fn_ptr_in_object ~ ctx.Ctx::Global::IS_OBJECT;
         	put target_addr = arg.IR::Node::ADDR;
         	IR::Patch64(ctx, addr, target_addr);
         	jump loop;
 
-        jump loop;
+lab error_fn_ptr_in_object;
+	Error::PrintError("Function pointer usage in object file! 
+	This is not supported, but also not hard to implement if the need
+	for it arises. Please create an issue under https://github.com/S1monr3dst0ne07-Forks/yascl-expt");
+
+
     lab done;
 }
 
@@ -619,19 +626,23 @@ lab asm_syscall;
     jump loop;
 
 lab asm_load_string;
+    // lea rax, [rip + rel32]
     IR::PushREXW(ctx);
-    IR::Push8(ctx, 184);
+    IR::Push8(ctx, 141);
+    IR::Push8(ctx,   5);
     put iter.IR::Node::ADDR = IR::Addr(ctx);
-    IR::Push64(ctx, 0);
+    IR::Push32(ctx, 0);
 
     Dyn::Push(patch_nodes, iter);
     jump loop;
 
 lab asm_load_static;
+	// lea rax, [rip + rel32]
     IR::PushREXW(ctx);
-    IR::Push8(ctx, 184);
+    IR::Push8(ctx, 141);
+    IR::Push8(ctx,   5);
     put iter.IR::Node::ADDR = IR::Addr(ctx);
-    IR::Push64(ctx, 0);
+    IR::Push32(ctx, 0);
 
     Dyn::Push(static_nodes, iter);
     jump loop;
