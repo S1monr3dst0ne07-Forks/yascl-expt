@@ -389,16 +389,27 @@ lab asm_call_ext;
 	IR::Push8(ctx, 137);
 	IR::Push8(ctx, 209);
 
+	// save stack pointer
+	// enter 0,0
+	IR::Push8 (ctx, 200);
+	IR::Push16(ctx, 0);
+	IR::Push8 (ctx, 0);
+
 	// align stack
-	// and rsp, 0x10
+	// and rsp, -0x10
 	IR::PushREXW(ctx);
 	IR::Push8(ctx, 131);
 	IR::Push8(ctx, 228);
-	IR::Push8(ctx, 16);
+	IR::Push8(ctx, 240);
 
     IR::Push8(ctx, 232);
     put iter.IR::Node::ADDR = IR::Addr(ctx);
     IR::Push32(ctx, 0); // PC32 placeholder
+
+	// restore stack pointer
+	// leave
+	IR::Push8(ctx, 201);
+
     jump loop;
 
 
