@@ -183,7 +183,7 @@ fn Section::GenRelaTab(ctx, stuff)
 		put addr       = iter.IR::Node::ADDR;
 		put symbol_idx = HT::Get(stuff.Section::Stuff::SYMBOL_TO_INDEX, symbol);
 
-		IR::Push64(ctx, addr - Tmpl::Config::LOAD_ADDR);
+		IR::Push64(ctx, addr - (Tmpl::Config::LOAD_ADDR + Tmpl::Config::HEADER_SIZE));
 		IR::Push64(ctx, (symbol_idx << 32) + 2); //ELF64_R_X86_64_PC32
 		IR::Push64(ctx, 0 - 4);
 
