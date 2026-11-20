@@ -391,10 +391,28 @@ lab loop;
 
 lab asm_call_ext;
 	// hack abi
+	// syscall  abi: rax, rdi, rsi, rdx, r10, r8, r9
+	// function abi: rdi, rsi, rdx, rcx, r8, r9
+
 	// mov rcx, r10
 	IR::Push8(ctx, 76);
 	IR::Push8(ctx, 137);
 	IR::Push8(ctx, 209);
+
+	// shift all register down
+	// (this fucking sucks ass)
+	// mov r9,  r8
+	// mov r8,  rcx
+	// mov rcx, rdx
+	// mov rdx, rsi
+	// mov rsi, rdi
+	// mov rdi, rax
+	IR::Push8(ctx, 77); IR::Push8(ctx, 137); IR::Push8(ctx, 193);
+	IR::Push8(ctx, 73); IR::Push8(ctx, 137); IR::Push8(ctx, 200);
+	IR::Push8(ctx, 72); IR::Push8(ctx, 137); IR::Push8(ctx, 209);
+	IR::Push8(ctx, 72); IR::Push8(ctx, 137); IR::Push8(ctx, 242);
+	IR::Push8(ctx, 72); IR::Push8(ctx, 137); IR::Push8(ctx, 254);
+	IR::Push8(ctx, 72); IR::Push8(ctx, 137); IR::Push8(ctx, 199);
 
 	// save stack pointer
 	// enter 0,0
