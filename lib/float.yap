@@ -185,3 +185,18 @@ fn Float::Sqrt(x)
 }
 
 
+
+fn Float::ToHalf(x)
+{
+	put sgn =  x >> 63;
+	put exp = (x >> 52) & 2047;
+	put man =  x        & 4503599627370495;
+	put exp = exp - 1023;
+
+	put exp = (exp + 127) & 255;
+	put man = man >> 29;
+
+	return man | (exp << 23) | (sgn << 31);
+}
+
+
