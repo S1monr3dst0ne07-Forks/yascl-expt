@@ -96,14 +96,7 @@ fn main(argc, argv)
     print("Compilation successful\n");
     Ctx::Output(ctx, opt.Options::OUTPUT);
 
-    Ast::Prog::Void(root);
-    Ctx::VoidGlobal(ctx);
-    Chunk::Void(opt.Options::SOURCE);
-    Chunk::Void(opt.Options::OUTPUT);
-
-    //dump_ht("consts.txt", "%s: %d\n", ctx.Ctx::Global::CONSTS);
-    //dump_heap("core");
-
+    put opt.Options::RUN = (opt.Options::RUN) & Bool::Not(ctx.Ctx::Global::IS_OBJECT);
     maybe_run(opt);
 }
 

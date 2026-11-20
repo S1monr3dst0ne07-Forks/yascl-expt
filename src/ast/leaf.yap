@@ -37,8 +37,14 @@ seq Ast::Leaf::Kind
     SUBEXPR,
     FN_PTR,
     FN_PTR_CALL,
-
     MINUS,
+
+    // external call.
+    // if one of these is present,
+    // the executable will be switched
+    // to PT_REL and a relation tabl
+    // is generated.
+	EXT_CALL, 
 }
 
 fn Ast::Leaf::ParseCallParams(stream)
@@ -109,6 +115,7 @@ fn Ast::Leaf::Parse(stream)
     jump sub_expr  ~ Str::Diff(content, "(") == 0;
     jump array     ~ Str::Diff(content, "[") == 0;
     jump fn_ptr    ~ Str::Diff(content, "@") == 0;
+    jump ext_call  ~ Str::Diff(content, "?") == 0;
     jump call      ~ Str::Diff(next, "(") == 0;
     jump number    ~ Str::IsNumber(content);
 
@@ -116,6 +123,18 @@ fn Ast::Leaf::Parse(stream)
     jump float ~ Str::Cmp(content, "#") & (Str::IsNumber(next) | ((next.0) == '-')); // S1mon's syntax
 
     jump meta;
+
+
+lab ext_call;
+    put subnode = Chunk::New(Ast::Leaf::Call);
+    put subnode.Ast::Leaf::Call::NAME = Str::Copy(Lex::Pop(stream));
+    put subnode.Ast::Leaf::Call::PARAMS = Ast::Leaf::ParseCallParams(stream);
+
+    return Ast::Leaf::Local::MakeLeaf(
+        subnode, Ast::Leaf::Kind::EXT_CALL, info
+    );
+	
+
 
 lab minus;
 	return Ast::Leaf::Local::MakeLeaf(
@@ -247,6 +266,7 @@ fn Ast::Leaf::Resolve(node, ctx)
     jump minus   ~ kind == Ast::Leaf::Kind::MINUS;
     jump call    ~ kind == Ast::Leaf::Kind::CALL;
     jump call    ~ kind == Ast::Leaf::Kind::FN_PTR_CALL;
+    jump call    ~ kind == Ast::Leaf::Kind::EXT_CALL;
     jump array   ~ kind == Ast::Leaf::Kind::ARRAY;
 
     jump done    ~ kind != Ast::Leaf::Kind::META;
@@ -282,96 +302,13 @@ fn Ast::Leaf::Resolve(node, ctx)
 }
 
 
-fn Ast::Leaf::Load(node, ctx)
+fn Ast::Leaf::LoadCallParams(node, ctx)
 {
-    put kind  = node.Ast::Leaf::KIND;
-    put value = node.Ast::Leaf::VALUE;
-    put info  = node.Ast::Leaf::INFO;
+    put call_node = node.Ast::Leaf::VALUE;
+    put info      = node.Ast::Leaf::INFO;
 
-    jump load_subexpr   ~ kind == Ast::Leaf::Kind::SUBEXPR;
-    jump load_number    ~ kind == Ast::Leaf::Kind::NUMBER;
-    jump load_var       ~ kind == Ast::Leaf::Kind::VAR;
-    jump load_call      ~ kind == Ast::Leaf::Kind::CALL;
-    jump load_const     ~ kind == Ast::Leaf::Kind::CONST;
-    jump load_string    ~ kind == Ast::Leaf::Kind::STRING;
-    jump load_array     ~ kind == Ast::Leaf::Kind::ARRAY;
-    jump load_char      ~ kind == Ast::Leaf::Kind::CHAR;
-    jump load_minus     ~ kind == Ast::Leaf::Kind::MINUS;
-
-    jump load_fn_ptr      ~ kind == Ast::Leaf::Kind::FN_PTR;
-    jump load_fn_ptr_call ~ kind == Ast::Leaf::Kind::FN_PTR_CALL;
-
-    Error::LexError(info, "Internal error: meta node while Ast::Leaf::Load");
-    jump done;
-
-lab load_minus;
-    Ast::Leaf::Load(value, ctx);
-	IR::Emit(ctx, IR::Op::NEGATE);
-	jump done;
-
-lab load_fn_ptr;
-	Dyn::Push(
-		ctx.Ctx::Global::CALL_TABLE,
-		IR::Emit(ctx, IR::Op::LOAD_FN_PTR, value)
-	);
-	jump done;
-lab load_fn_ptr_call;
-    put var_name = value.Ast::Leaf::Call::NAME;
-    put params   = value.Ast::Leaf::Call::PARAMS;
-    put param_count = Dyn::Size(params);
-
-    jump fnptr_num_param_fine ~ param_count < 8;
-        Error::LexError(
-            info,
-            "Call to function pointer `%s` with %d parameter, only up to 7 paramters are allowed",
-            var_name,
-            param_count,
-        );
-    lab fnptr_num_param_fine;
-
-    put i = 0;
-    lab fnptr_push_loop;
-        jump fnptr_push_done ~ i == param_count;
-        put param = Dyn::Ptr(params).i;
-        put i = i + 1;
-
-        Ast::Expr::Load(param, ctx);
-        IR::Emit(ctx, IR::Op::PUSH);
-        jump fnptr_push_loop;
-    lab fnptr_push_done;
-    lab fnptr_pop_loop;
-        jump fnptr_pop_done ~ i == 0;
-        put i = i - 1;
-        IR::Emit(ctx, IR::Op::STORE_PARAM, i);
-        jump fnptr_pop_loop;
-    lab fnptr_pop_done;
-    
-    jump var_not_exist ~ Bool::Not(Ctx::VarExists(ctx, var_name));
-    put addr = Ctx::VarLookup(ctx, var_name);
-    IR::Emit(ctx, IR::Op::CALL_FN_PTR, addr);
-    jump done;
-
-lab load_char;   
-lab load_number;
-    IR::Emit(ctx, IR::Op::LOAD_INT, value);
-    jump done;
-lab load_const;
-    put const = HT::Get(ctx.Ctx::Global::CONSTS, value);
-    IR::Emit(ctx, IR::Op::LOAD_INT, const);
-    jump done;
-lab load_var;
-    jump var_not_exist ~ Bool::Not(Ctx::VarExists(ctx, value));
-    put addr = Ctx::VarLookup(ctx, value);
-    IR::Emit(ctx, IR::Op::LOAD_LOCAL, addr);
-    jump done;
-
-lab load_subexpr;
-    Ast::Expr::Load(value, ctx);
-    jump done;
-
-lab load_call;
-    put name   = value.Ast::Leaf::Call::NAME;
-    put params = value.Ast::Leaf::Call::PARAMS;
+    put name   = call_node.Ast::Leaf::Call::NAME;
+    put params = call_node.Ast::Leaf::Call::PARAMS;
     put param_count = Dyn::Size(params);
 
     jump num_param_fine ~ param_count < 8;
@@ -402,6 +339,83 @@ lab load_call;
         IR::Emit(ctx, IR::Op::STORE_PARAM, i);
         jump pop_loop;
     lab pop_done;
+}
+
+
+fn Ast::Leaf::Load(node, ctx)
+{
+    put kind  = node.Ast::Leaf::KIND;
+    put value = node.Ast::Leaf::VALUE;
+    put info  = node.Ast::Leaf::INFO;
+
+    jump load_subexpr   ~ kind == Ast::Leaf::Kind::SUBEXPR;
+    jump load_number    ~ kind == Ast::Leaf::Kind::NUMBER;
+    jump load_var       ~ kind == Ast::Leaf::Kind::VAR;
+    jump load_call      ~ kind == Ast::Leaf::Kind::CALL;
+    jump load_const     ~ kind == Ast::Leaf::Kind::CONST;
+    jump load_string    ~ kind == Ast::Leaf::Kind::STRING;
+    jump load_array     ~ kind == Ast::Leaf::Kind::ARRAY;
+    jump load_char      ~ kind == Ast::Leaf::Kind::CHAR;
+    jump load_minus     ~ kind == Ast::Leaf::Kind::MINUS;
+
+    jump load_fn_ptr      ~ kind == Ast::Leaf::Kind::FN_PTR;
+    jump load_fn_ptr_call ~ kind == Ast::Leaf::Kind::FN_PTR_CALL;
+    jump load_ext_call    ~ kind == Ast::Leaf::Kind::EXT_CALL;
+
+    Error::LexError(info, "Internal error: Unimplemented node kind %d while Ast::Leaf::Load", [kind]);
+    jump done;
+
+lab load_ext_call;
+    put name = value.Ast::Leaf::Call::NAME;
+    Ast::Leaf::LoadCallParams(node, ctx);
+
+    // enable object mode
+    put ctx.Ctx::Global::IS_OBJECT = Bool::TRUE;
+
+    IR::Emit(ctx, IR::Op::CALL_EXT, name);
+    jump done;
+
+lab load_minus;
+    Ast::Leaf::Load(value, ctx);
+	IR::Emit(ctx, IR::Op::NEGATE);
+	jump done;
+
+lab load_fn_ptr;
+	Dyn::Push(
+		ctx.Ctx::Global::CALL_TABLE,
+		IR::Emit(ctx, IR::Op::LOAD_FN_PTR, value)
+	);
+	jump done;
+lab load_fn_ptr_call;
+    put var_name = value.Ast::Leaf::Call::NAME;
+    Ast::Leaf::LoadCallParams(node, ctx);
+    
+    jump var_not_exist ~ Bool::Not(Ctx::VarExists(ctx, var_name));
+    put addr = Ctx::VarLookup(ctx, var_name);
+    IR::Emit(ctx, IR::Op::CALL_FN_PTR, addr);
+    jump done;
+
+lab load_char;   
+lab load_number;
+    IR::Emit(ctx, IR::Op::LOAD_INT, value);
+    jump done;
+lab load_const;
+    put const = HT::Get(ctx.Ctx::Global::CONSTS, value);
+    IR::Emit(ctx, IR::Op::LOAD_INT, const);
+    jump done;
+lab load_var;
+    jump var_not_exist ~ Bool::Not(Ctx::VarExists(ctx, value));
+    put addr = Ctx::VarLookup(ctx, value);
+    IR::Emit(ctx, IR::Op::LOAD_LOCAL, addr);
+    jump done;
+
+lab load_subexpr;
+    Ast::Expr::Load(value, ctx);
+    jump done;
+
+lab load_call;
+    put name   = value.Ast::Leaf::Call::NAME;
+    Ast::Leaf::LoadCallParams(node, ctx);
     
     jump syscall ~ Str::Diff(name, "syscall") == 0;
         //actual call

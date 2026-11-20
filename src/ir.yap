@@ -73,6 +73,12 @@ seq IR::Op
     CALL_FN_PTR, // kai omega
 
     NEGATE,
+
+    // this does all kinds of stuff:
+    //  - align stack
+    //  - calling conventions hack (syscall -> system v)
+    //  - relocation table entry 
+    CALL_EXT,
 }
 
 seq IR::FloatOp
@@ -372,7 +378,29 @@ lab loop;
 
     jump asm_negate      ~ opcode == IR::Op::NEGATE;
 
+    jump asm_call_ext    ~ opcode == IR::Op::CALL_EXT;
+
     Error::PrintError("INTERNAL: Invalid IR opcode %d", [opcode]);
+
+lab asm_call_ext;
+	// hack abi
+	// mov rcx, r10
+	IR::Push8(ctx, 76);
+	IR::Push8(ctx, 137);
+	IR::Push8(ctx, 209);
+
+	// align stack
+	// and rsp, 0x10
+	IR::PushREXW(ctx);
+	IR::Push8(ctx, 131);
+	IR::Push8(ctx, 228);
+	IR::Push8(ctx, 16);
+
+    IR::Push8(ctx, 232);
+    put iter.IR::Node::ADDR = IR::Addr(ctx);
+    IR::Push32(ctx, 0); // PC32 placeholder
+    jump loop;
+
 
 lab asm_negate;
 	IR::PushREXW(ctx);
