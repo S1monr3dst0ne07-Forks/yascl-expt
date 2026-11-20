@@ -121,7 +121,14 @@ fn Section::GenSymTab(ctx, stuff)
 		jump ir_done ~ iter == Mem::NULL;
 
 		put symbol = iter.IR::Node::ARG;
-		put addr   = iter.IR::Node::ADDR;
+		put value  = iter.IR::Node::ADDR;
+
+		// when generating an ET_REL object file
+		// the st_value field represent an offset into
+		// the section, as opposed to a virtual address
+		jump skip_adjust_value ~ Bool::Not(ctx.Ctx::Global::IS_OBJECT);
+			put value = value - (Tmpl::Config::LOAD_ADDR + Tmpl::Config::HEADER_SIZE);
+		lab skip_adjust_value;
 
 		jump ref_node      ~ (iter.IR::Node::OPCODE) == IR::Op::REF;
 		jump call_ext_node ~ (iter.IR::Node::OPCODE) == IR::Op::CALL_EXT;
@@ -135,7 +142,7 @@ fn Section::GenSymTab(ctx, stuff)
 		IR::Push8 (ctx, 16    ); // st_info  = STT_NOTYPE | STB_GLOBAL
 		IR::Push8 (ctx, 0     ); // st_other = STV_DEFAULT
 		IR::Push16(ctx, 3     ); // st_shndx = `.all`
-		IR::Push64(ctx, addr  ); // st_value
+		IR::Push64(ctx, value ); // st_value
 		IR::Push64(ctx, 0     ); // st_size  = 0
 		put i = i + 1;
 		jump ir_loop;
@@ -152,7 +159,7 @@ fn Section::GenSymTab(ctx, stuff)
 		IR::Push8 (ctx, 16    ); // st_info  = STT_NOTYPE | STB_GLOBAL
 		IR::Push8 (ctx, 0     ); // st_other = STV_DEFAULT
 		IR::Push16(ctx, 0     ); // st_shndx = UND
-		IR::Push64(ctx, addr  ); // st_value
+		IR::Push64(ctx, value ); // st_value
 		IR::Push64(ctx, 0     ); // st_size  = 0
 		put i = i + 1;
 		jump ir_loop;
