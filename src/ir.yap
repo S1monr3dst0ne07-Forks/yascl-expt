@@ -414,6 +414,20 @@ lab asm_call_ext;
 	IR::Push8(ctx, 72); IR::Push8(ctx, 137); IR::Push8(ctx, 254);
 	IR::Push8(ctx, 72); IR::Push8(ctx, 137); IR::Push8(ctx, 199);
 
+	// more abi hacking
+	// movq xmm0, rdi
+	// movq xmm1, rsi
+	// movq xmm2, rdx
+	// movq xmm3, rcx
+	// movq xmm4, r8
+	// movq xmm5, r9
+	IR::Push8(ctx, 102); IR::Push8(ctx, 72); IR::Push8(ctx, 15); IR::Push8(ctx, 110); IR::Push8(ctx, 199);
+	IR::Push8(ctx, 102); IR::Push8(ctx, 72); IR::Push8(ctx, 15); IR::Push8(ctx, 110); IR::Push8(ctx, 206);
+	IR::Push8(ctx, 102); IR::Push8(ctx, 72); IR::Push8(ctx, 15); IR::Push8(ctx, 110); IR::Push8(ctx, 210);
+	IR::Push8(ctx, 102); IR::Push8(ctx, 72); IR::Push8(ctx, 15); IR::Push8(ctx, 110); IR::Push8(ctx, 217);
+	IR::Push8(ctx, 102); IR::Push8(ctx, 73); IR::Push8(ctx, 15); IR::Push8(ctx, 110); IR::Push8(ctx, 224);
+	IR::Push8(ctx, 102); IR::Push8(ctx, 73); IR::Push8(ctx, 15); IR::Push8(ctx, 110); IR::Push8(ctx, 233);
+
 	// save stack pointer
 	// enter 0,0
 	IR::Push8 (ctx, 200);
